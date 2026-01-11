@@ -1,6 +1,6 @@
 // Версия приложения
 // В будущем можно читать из package.json, но пока храним здесь для простоты
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 
 /**
  * Получает версию приложения
@@ -16,12 +16,20 @@ export function getVersion() {
  */
 export function getVersionString() {
   const version = getVersion();
-  const now = new Date();
-  const buildTime = now.toISOString()
-    .replace('T', ' ')
-    .replace(/\.\d{3}Z$/, '')
-    .replace(/-/g, '-')
-    .replace(/:/g, ':');
+  // ВАЖНО: отображаем время сборки в часовом поясе +3 (Europe/Moscow)
+  let buildTime = '';
+  try {
+    const now = new Date();
+    // sv-SE даёт формат YYYY-MM-DD HH:mm:ss
+    buildTime = now
+      .toLocaleString('sv-SE', { timeZone: 'Europe/Moscow', hour12: false })
+      .replace(',', '');
+  } catch (e) {
+    const now = new Date(Date.now() + 3 * 60 * 60 * 1000);
+    buildTime = now.toISOString()
+      .replace('T', ' ')
+      .replace(/\.\d{3}Z$/, '');
+  }
 
   return `v${version} - ${buildTime}`;
 }

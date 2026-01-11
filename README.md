@@ -1,5 +1,137 @@
 # panoTest
 
+Web application for interactive image control on screen using head position tracking via webcam.
+
+## Description
+
+panoTest is a prototype of an innovative interface that allows controlling image panning and zooming on screen without using a mouse or keyboard. Instead, it uses tracking of the user's head position relative to the webcam through MediaPipe.
+
+### How it works
+
+1. **Head tracking**: MediaPipe Face Landmarker tracks the user's head position in real-time (translation X/Y/Z relative to the camera)
+
+2. **Zooming**: When the head approaches the screen, the percentage of the displayed background image area increases. The transformation is based on calculating the angular size of the screen using the formula: α = 2 × arctan(W / (2 × L))
+
+3. **Panning**: When the head moves left/right/up/down, the viewing "window" shifts across the background image, creating a virtual window effect
+
+## Technologies
+
+- **JavaScript (ES6+)** - main development language
+- **MediaPipe** - computer vision for head tracking
+- **Canvas API** - image rendering
+- **WebRTC API** - webcam access
+- **Three.js** - planned for particle system (future)
+
+## Requirements
+
+- Modern browser with WebRTC support (Chrome 90+, Firefox 88+, Edge 90+)
+- Webcam
+- Good lighting for stable face tracking
+- Sufficiently powerful device for real-time video processing (~30 FPS)
+
+## Installation and Running
+
+### Prerequisites
+- Node.js and npm (or yarn)
+- Local web server (HTTP/HTTPS required for camera access)
+
+### Installation Steps
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd pano
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the local server:
+```bash
+npm start
+```
+
+4. Open your browser and navigate to:
+```
+http://localhost:3002
+```
+
+5. Allow webcam access when prompted by the browser
+
+## Usage
+
+1. On first launch, the application will request access to your webcam - allow access
+2. Make sure your face is clearly visible in the camera and well-lit
+3. Click the "Start" button to begin tracking
+4. Slowly move closer to and away from the screen - the image will zoom
+5. Move your head left/right/up/down - the viewport will pan across the image
+
+## Project Structure
+
+```
+pano/
+├── src/                    # Source code
+│   ├── camera/            # Camera management
+│   ├── mediapipe/         # MediaPipe integration
+│   ├── tracking/          # Tracking logic
+│   ├── viewport/          # Viewport management
+│   ├── renderer/          # Image rendering
+│   ├── ui/                # UI components
+│   └── utils/             # Utilities
+├── assets/                # Resources
+│   └── images/           # Background images
+├── styles/                # Styles
+└── index.html            # Main page
+```
+
+## Development
+
+### Code Style
+- ESLint with Airbnb configuration
+- 2 spaces for indentation
+- JSDoc comments for all functions
+- See [RULES.md](RULES.md) for details
+
+### Versioning
+The project uses SemVer. Version and build are displayed in the application's status bar.
+
+## Documentation
+
+- [PROJECT.md](PROJECT.md) - detailed project description and architecture
+- [REQUIREMENTS.md](REQUIREMENTS.md) - functional and non-functional requirements
+- [RULES.md](RULES.md) - development rules and code style
+
+## Known Limitations
+
+- Works only in browsers with WebRTC support
+- Requires good lighting for stable tracking
+- Accuracy depends on camera quality
+- Does not work when no face is detected in frame
+- HTTPS required for production (for camera access)
+
+## Future Plans
+
+- [ ] Three.js integration for particle system (snowflakes)
+- [ ] User background image upload
+- [ ] Sensitivity parameter configuration
+- [ ] Calibration for different screen sizes
+- [ ] Debug mode with performance metrics
+- [ ] Support for 2-3 simultaneously connected monitors - will require initial setup of their sizes and relative positions
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Authors
+
+Alexander Zibin
+
+---
+
+# panoTest
+
 Веб-приложение для интерактивного управления изображением на экране с помощью отслеживания положения головы через веб-камеру.
 
 ## Описание

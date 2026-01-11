@@ -11,16 +11,95 @@
     <!-- Canvas для отображения фонового изображения -->
     <canvas id="backgroundCanvas"></canvas>
 
+    <!-- Canvas для визуализации отладки (landmarks) -->
+    <canvas id="debugCanvas"></canvas>
+
     <!-- UI элементы -->
     <div id="ui-controls">
       <button id="startButton" class="btn btn-primary">Старт</button>
       <button id="stopButton" class="btn btn-secondary" disabled>Стоп</button>
+      <button id="resetCenterButton" class="btn btn-secondary">Возврат на центр</button>
+      <button id="toggleLandmarksButton" class="btn btn-secondary">Скрыть маркеры лица</button>
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: 10px;">
+        <input type="checkbox" id="mirrorFaceCheckbox" style="cursor: pointer;">
+        <label for="mirrorFaceCheckbox" style="color: #fff; cursor: pointer; user-select: none;">Зеркалить лицо</label>
+      </div>
+      
+      <!-- Слайдеры для чувствительности -->
+      <div id="sensitivity-controls" class="sensitivity-controls">
+        <div class="sensitivity-item">
+          <input type="checkbox" id="enableXCheckbox" checked style="cursor: pointer; margin-right: 5px;">
+          <label for="sensitivityX">Чувствительность X:</label>
+          <input type="range" id="sensitivityX" min="0" max="3500" value="1000" step="10">
+          <span id="sensitivityXValue">1000</span>
+        </div>
+        <div class="sensitivity-item">
+          <input type="checkbox" id="enableYCheckbox" checked style="cursor: pointer; margin-right: 5px;">
+          <label for="sensitivityY">Чувствительность Y:</label>
+          <input type="range" id="sensitivityY" min="0" max="3500" value="1000" step="10">
+          <span id="sensitivityYValue">1000</span>
+        </div>
+        <div class="sensitivity-item">
+          <input type="checkbox" id="enableZCheckbox" checked style="cursor: pointer; margin-right: 5px;">
+          <label for="sensitivityZ">Чувствительность Z (масштаб):</label>
+          <input type="range" id="sensitivityZ" min="0" max="0.03" value="0.025" step="0.0001">
+          <span id="sensitivityZValue">25</span>
+        </div>
+        <div class="sensitivity-item">
+          <label for="fpsSelector">Частота кадров (FPS):</label>
+          <select id="fpsSelector" style="flex: 1; padding: 5px; border-radius: 4px; background: #333; color: #fff; border: 1px solid #555;">
+            <option value="30" selected>30 FPS</option>
+            <option value="15">15 FPS</option>
+          </select>
+        </div>
+        <div class="sensitivity-item">
+          <button id="resetSensitivityButton" class="btn btn-secondary" style="margin-top: 5px; width: 100%;">Чувствительность по умолчанию</button>
+        </div>
+      </div>
     </div>
+    <script>
+      // Применяем сохранённые значения чувствительности максимально рано, чтобы избежать мигания дефолтов
+      (function applySavedSensitivityEarly() {
+        try {
+          const savedX = localStorage.getItem('panoTest_sensitivityX');
+          const savedY = localStorage.getItem('panoTest_sensitivityY');
+          const savedZRaw = localStorage.getItem('panoTest_sensitivityZ');
+          const x = savedX ? parseFloat(savedX) : 1000;
+          const y = savedY ? parseFloat(savedY) : 1000;
+          let z = 0.025;
+          if (savedZRaw !== null) {
+            const zParsed = parseFloat(savedZRaw);
+            z = zParsed > 1 ? zParsed / 1000 : zParsed;
+            z = Math.max(0, Math.min(0.03, Math.round(z * 10000) / 10000));
+          }
+          const savedEnableX = localStorage.getItem('panoTest_enableX');
+          const savedEnableY = localStorage.getItem('panoTest_enableY');
+          const savedEnableZ = localStorage.getItem('panoTest_enableZ');
+          const sx = document.getElementById('sensitivityX');
+          const sy = document.getElementById('sensitivityY');
+          const sz = document.getElementById('sensitivityZ');
+          const sxv = document.getElementById('sensitivityXValue');
+          const syv = document.getElementById('sensitivityYValue');
+          const szv = document.getElementById('sensitivityZValue');
+          const ex = document.getElementById('enableXCheckbox');
+          const ey = document.getElementById('enableYCheckbox');
+          const ez = document.getElementById('enableZCheckbox');
+          if (sx) { sx.value = x; sx.max = 3500; if (sxv) sxv.textContent = Math.round(x); }
+          if (sy) { sy.value = y; sy.max = 3500; if (syv) syv.textContent = Math.round(y); }
+          if (sz) { sz.value = z; if (szv) szv.textContent = Math.round(z * 1000); }
+          if (ex) ex.checked = savedEnableX !== null ? savedEnableX === 'true' : true;
+          if (ey) ey.checked = savedEnableY !== null ? savedEnableY === 'true' : true;
+          if (ez) ez.checked = savedEnableZ !== null ? savedEnableZ === 'true' : true;
+        } catch (e) {
+          console.warn('early sensitivity restore failed', e);
+        }
+      })();
+    </script>
 
     <!-- Статус-бар внизу -->
     <div id="status-bar">
       <span id="status-text">Готов к запуску</span>
-      <span id="version-info">v0.1.0 - 2026-01-11 11:27:00</span>
+      <span id="version-info">v0.1.1 - 2026-01-11 00:00:00</span>
     </div>
 
     <!-- Сообщения об ошибках -->

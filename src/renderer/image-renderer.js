@@ -92,14 +92,30 @@ export class ImageRenderer {
    */
   render(scale = 1.0, offsetX = 0, offsetY = 0) {
     if (!this.imageLoaded || !this.image || !this.ctx) {
+      console.warn('ImageRenderer.render: image not loaded or context not available');
       return;
     }
+
+    // Проверяем валидность параметров
+    if (isNaN(scale) || scale <= 0) {
+      console.warn('ImageRenderer.render: invalid scale:', scale, 'using default 2.0');
+      scale = 2.0; // 50% отображения по умолчанию
+    }
+
+    if (isNaN(offsetX)) offsetX = 0;
+    if (isNaN(offsetY)) offsetY = 0;
 
     // Очищаем canvas
     this.clear();
 
-    const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
-    const canvasHeight = this.canvas.height / (window.devicePixelRatio || 1);
+    // Убеждаемся, что canvas имеет правильные размеры
+    if (this.canvas.width === 0 || this.canvas.height === 0) {
+      this.resizeCanvas();
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    const canvasWidth = this.canvas.width / dpr;
+    const canvasHeight = this.canvas.height / dpr;
 
     // Рассчитываем размер отображаемой области изображения
     // scale = 1.0 означает показываем 100% изображения, scale = 2.0 означает 50%

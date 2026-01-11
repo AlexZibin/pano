@@ -12,9 +12,15 @@
  * @returns {number} Угловой размер экрана в градусах
  */
 export function calculateAngularSize(screenWidth, distanceToMonitor) {
-  if (distanceToMonitor <= 0) {
-    console.warn('calculateAngularSize: distanceToMonitor должно быть больше 0');
-    return 180; // Максимальный угол при нулевом расстоянии
+  // Проверяем входные данные на валидность
+  if (!screenWidth || screenWidth <= 0 || isNaN(screenWidth)) {
+    console.warn('calculateAngularSize: invalid screenWidth:', screenWidth);
+    return 28; // Возвращаем минимальный угол по умолчанию
+  }
+
+  if (!distanceToMonitor || distanceToMonitor <= 0 || isNaN(distanceToMonitor)) {
+    console.warn('calculateAngularSize: invalid distanceToMonitor:', distanceToMonitor);
+    return 28; // Возвращаем минимальный угол по умолчанию
   }
 
   // Преобразуем ширину экрана в метры (предполагаем стандартное разрешение ~96 DPI)
@@ -26,6 +32,12 @@ export function calculateAngularSize(screenWidth, distanceToMonitor) {
   // Рассчитываем угловой размер по формуле
   const angleRadians = 2 * Math.atan(widthInMeters / (2 * distanceToMonitor));
   const angleDegrees = angleRadians * (180 / Math.PI);
+
+  // Проверяем результат на NaN
+  if (isNaN(angleDegrees)) {
+    console.warn('calculateAngularSize: result is NaN');
+    return 28; // Возвращаем минимальный угол по умолчанию
+  }
 
   return angleDegrees;
 }
@@ -46,7 +58,7 @@ export function angularSizeToDisplayPercent(
   angularSize,
   minAngle = 28,
   maxAngle = 180,
-  minPercent = 50,
+  minPercent = 30, // Уменьшено с 50 до 30 для большего зума
   maxPercent = 100
 ) {
   // Ограничиваем угловой размер в диапазоне
@@ -66,28 +78,45 @@ export function angularSizeToDisplayPercent(
 
 /**
  * Преобразует Z-translation от MediaPipe в расстояние до монитора (РМ)
- * MediaPipe возвращает координаты относительно камеры в нормализованном виде
- * Нужно преобразовать в реальное расстояние в метрах
+ * ВАЖНО: Использует пропорциональное преобразование, чтобы при изменении реального расстояния на 5%,
+ * вычисленное РМ менялось примерно на 5-6%, а не на 300%
  * 
  * @param {number} zTranslation - Z-translation от MediaPipe (нормализованное значение)
  * @param {number} minDistance - Минимальное расстояние в метрах, по умолчанию 0.3 м (30 см)
  * @param {number} maxDistance - Максимальное расстояние в метрах, по умолчанию 1.5 м
  * @returns {number} Расстояние до монитора (РМ) в метрах
  */
-export function zTranslationToDistance(zTranslation, minDistance = 0.3, maxDistance = 1.5) {
-  // MediaPipe Z-translation обычно отрицательное (чем дальше, тем меньше значение)
-  // Инвертируем и нормализуем в диапазон расстояний
-  // Предполагаем, что zTranslation в диапазоне примерно от -0.5 до -2.0
-  // (нужно будет калибровать в зависимости от конкретной камеры)
+export function zTranslationToDistance(zTranslation, minDistance = 0.1, maxDistance = 1.5) {
+  // Проверяем на валидность входных данных
+  if (zTranslation === null || zTranslation === undefined || isNaN(zTranslation)) {
+    console.warn('zTranslationToDistance: invalid zTranslation value:', zTranslation);
+    return (minDistance + maxDistance) / 2; // Возвращаем среднее значение
+  }
 
-  // Инвертируем значение (делаем положительным)
-  const normalizedZ = -zTranslation;
+  // ВАЖНО: Используем пропорциональное преобразование с низкой чувствительностью,
+  // чтобы небольшие изменения z (реальное смещение головы на 5–6%) давали аналогичное изменение РМ.
+  // Значения z из MediaPipe по логам находятся примерно в диапазоне [-55; -40].
+  // Принимаем базовое значение z и расстояние:
+  const baseZ = -49.5;      // базовое z из логов
+  const baseDistance = 0.52; // среднее реальное расстояние (0.51–0.53 м)
+  // Подбираем коэффициент так, чтобы изменение z на 1 давало ~3–4% изменения дистанции.
+  // Это мягче, чем прежние скачки.
+  const sensitivity = 0.035; // 3.5% на единицу z
 
-  // Масштабируем в диапазон расстояний (требуется калибровка)
-  // Пока используем простое линейное преобразование
-  const distance = Math.max(minDistance, Math.min(maxDistance, normalizedZ * 0.5));
+  const deltaZ = zTranslation - baseZ;
+  const distanceChangeFactor = 1 + (deltaZ * sensitivity);
+  const newDistance = baseDistance * distanceChangeFactor;
+  
+  // Ограничиваем в диапазоне
+  const clampedDistance = Math.max(minDistance, Math.min(maxDistance, newDistance));
 
-  return distance;
+  // Проверяем результат на NaN
+  if (isNaN(clampedDistance)) {
+    console.warn('zTranslationToDistance: result is NaN, using default');
+    return baseDistance;
+  }
+
+  return clampedDistance;
 }
 
 /**

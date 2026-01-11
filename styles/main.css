@@ -23,16 +23,42 @@ body {
   height: 100%;
   display: block;
   background: #1a1a1a;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#debugCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
 }
 
 #ui-controls {
-  position: absolute;
+  position: fixed;
   top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 20px;
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 10px;
-  z-index: 100;
+  z-index: 120;
+  opacity: 0.75; /* 25% прозрачнее */
+  transform: scale(0.9); /* на 10% меньше, чем было */
+  transform-origin: top right;
+}
+
+/* Слайдеры должны быть выше кнопок */
+#sensitivity-controls {
+  order: 0;
+}
+
+#ui-controls > :not(#sensitivity-controls) {
+  order: 1;
 }
 
 .btn {
@@ -69,29 +95,74 @@ body {
   background: #545b62;
 }
 
+/* Цвета основных кнопок */
+#startButton {
+  background: #28a745; /* зелёный */
+  color: #fff;
+}
+
+#startButton:hover:not(:disabled) {
+  background: #218838;
+}
+
+#stopButton {
+  background: #dc3545; /* красный */
+  color: #fff;
+}
+
+#stopButton:hover:not(:disabled) {
+  background: #c82333;
+}
+
+#resetCenterButton {
+  background: #fd7e14; /* оранжевый */
+  color: #fff;
+}
+
+#resetCenterButton:hover:not(:disabled) {
+  background: #e8590c;
+}
+
 #status-bar {
-  position: absolute;
+  /* Контейнер без широкой чёрной полосы */
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 8px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  z-index: 100;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  padding: 0;
+  display: block;
+  z-index: 110;
+  border-top: none;
+  pointer-events: none;
 }
 
 #status-text {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
   font-weight: 500;
+  font-size: 12px;
+  pointer-events: none;
 }
 
 #version-info {
-  color: #aaa;
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ddd;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
   font-family: 'Courier New', monospace;
+  pointer-events: none;
 }
 
 .error-message {
@@ -116,4 +187,111 @@ body {
 /* Скрытие видео элемента (используется только для MediaPipe) */
 #videoElement {
   display: none;
+}
+
+/* Слайдеры чувствительности */
+.sensitivity-controls {
+  position: static; /* чтобы не "ездил" вместе с кнопками и не перекрывал их */
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px 20px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 120;
+  min-width: 450px; /* Увеличено с 300px на 50% */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* opacity/scale наследуются от #ui-controls */
+}
+
+.sensitivity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sensitivity-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #007bff;
+  flex-shrink: 0;
+}
+
+.sensitivity-item label {
+  color: #fff;
+  font-size: 14.3px; /* Увеличено на 10% (было 13px, теперь ~14.3px) */
+  min-width: 180px;
+  font-weight: 500;
+}
+
+.sensitivity-item input[type="range"] {
+  flex: 1.5; /* Увеличено с 1 на 1.5 (на 50% длиннее) */
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.sensitivity-item input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #007bff;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.sensitivity-item input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #007bff;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.sensitivity-item span {
+  color: #fff;
+  font-size: 14.3px; /* Увеличено на 10% (было 13px, теперь ~14.3px) */
+  min-width: 50px;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.sensitivity-item select {
+  flex: 1;
+  padding: 5px;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  font-size: 14.3px; /* Увеличено на 10% (было 13px, теперь ~14.3px) */
+  cursor: pointer;
+}
+
+.sensitivity-item select:hover {
+  background: #444;
+}
+
+.sensitivity-item select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+/* Чекбокс зеркалирования */
+#mirrorFaceCheckbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #007bff;
+}
+
+#mirrorFaceCheckbox + label {
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
 }

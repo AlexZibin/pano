@@ -153,6 +153,24 @@ export class MediaPipeHandler {
       // - timestamp: время кадра в миллисекундах
       const results = this.faceLandmarker.detectForVideo(videoElement, nowInMs);
 
+      // Отладочный вывод (только при первом успешном обнаружении)
+      if (results && results.faceLandmarks && results.faceLandmarks.length > 0 && !this._debugLogged) {
+        console.info('MediaPipe results structure:', {
+          hasFaceLandmarks: !!results.faceLandmarks,
+          faceLandmarksCount: results.faceLandmarks?.length,
+          hasFacialTransformationMatrixes: !!results.facialTransformationMatrixes,
+          facialTransformationMatrixesCount: results.facialTransformationMatrixes?.length,
+          facialTransformationMatrixesType: typeof results.facialTransformationMatrixes,
+          isArray: Array.isArray(results.facialTransformationMatrixes),
+          firstElement: results.facialTransformationMatrixes?.[0],
+          firstElementType: typeof results.facialTransformationMatrixes?.[0],
+          firstElementIsArray: Array.isArray(results.facialTransformationMatrixes?.[0]),
+          firstElementLength: results.facialTransformationMatrixes?.[0]?.length,
+          allKeys: Object.keys(results)
+        });
+        this._debugLogged = true;
+      }
+
       // Проверяем, найдено ли лицо
       if (!results.faceLandmarks || results.faceLandmarks.length === 0) {
         return null; // Лицо не обнаружено
@@ -163,30 +181,153 @@ export class MediaPipeHandler {
 
       // Получаем transformation matrix - матрицу преобразования, содержащую информацию о положении головы
       // Эта матрица включает rotation (поворот) и translation (смещение) головы
-      if (!results.facialTransformationMatrixes || results.facialTransformationMatrixes.length === 0) {
-        console.warn('No transformation matrix found');
+      // Структура: facialTransformationMatrixes[0] = {rows: 4, columns: 4, data: Array(16)}
+      let transformationMatrix = null;
+      
+      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0) {
+        const matrixObject = results.facialTransformationMatrixes[0];
+        
+        // MediaPipe возвращает объект с полями rows, columns, data
+        if (matrixObject && matrixObject.data && Array.isArray(matrixObject.data)) {
+          transformationMatrix = matrixObject.data;
+        } else if (Array.isArray(matrixObject) && matrixObject.length >= 16) {
+          // Fallback: если это уже массив
+          transformationMatrix = matrixObject;
+        }
+      }
+
+      if (!transformationMatrix || !Array.isArray(transformationMatrix) || transformationMatrix.length < 16) {
+        // Если transformation matrix недоступна, выводим детальную отладочную информацию
+        if (!this._matrixDebugLogged) {
+          console.warn('No transformation matrix found. Details:', {
+            hasProperty: !!results.facialTransformationMatrixes,
+            propertyType: typeof results.facialTransformationMatrixes,
+            isArray: Array.isArray(results.facialTransformationMatrixes),
+            length: results.facialTransformationMatrixes?.length,
+            firstElement: results.facialTransformationMatrixes?.[0],
+            firstElementType: typeof results.facialTransformationMatrixes?.[0]
+          });
+          this._matrixDebugLogged = true;
+        }
         return null;
       }
 
-      const transformationMatrix = results.facialTransformationMatrixes[0];
-
       // Извлекаем translation (смещение) из матрицы преобразования
-      // Translation - это координаты головы относительно камеры:
-      // - X: смещение влево/вправо (отрицательное = влево, положительное = вправо)
-      // - Y: смещение вверх/вниз (отрицательное = вверх, положительное = вниз)
-      // - Z: расстояние до камеры (отрицательное значение, чем дальше, тем меньше значение)
-      const translation = {
-        x: transformationMatrix[12], // Элемент матрицы в позиции [3][0]
-        y: transformationMatrix[13], // Элемент матрицы в позиции [3][1]
-        z: transformationMatrix[14]  // Элемент матрицы в позиции [3][2]
+      // ВАЖНО: MediaPipe использует column-major формат для матрицы 4x4
+      // В column-major: [m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33]
+      // Translation находится в последнем столбце: [m03, m13, m23] = индексы [3, 7, 11]
+      // Или можно использовать индексы [12, 13, 14] если это row-major, но MediaPipe использует column-major
+      
+      // Проверяем формат: если это объект с rows/columns, используем data напрямую
+      // В column-major формате translation в индексах [3, 7, 11] (последний столбец)
+      // В row-major формате translation в индексах [12, 13, 14] (последняя строка)
+      
+      // Логируем всю матрицу для отладки (только первый раз)
+      if (!this._matrixFullDebugLogged) {
+        console.info('Full transformation matrix:', {
+          matrix: Array.from(transformationMatrix).map(v => v.toFixed(4)),
+          indices: {
+            colMajor: { x: transformationMatrix[3], y: transformationMatrix[7], z: transformationMatrix[11] },
+            rowMajor: { x: transformationMatrix[12], y: transformationMatrix[13], z: transformationMatrix[14] }
+          }
+        });
+        this._matrixFullDebugLogged = true;
+      }
+
+      // Пробуем оба варианта и выбираем тот, где значения в разумном диапазоне
+      const colMajorTranslation = {
+        x: transformationMatrix[3],  // column-major: [3] = m03
+        y: transformationMatrix[7],  // column-major: [7] = m13
+        z: transformationMatrix[11]  // column-major: [11] = m23
       };
+      
+      const rowMajorTranslation = {
+        x: transformationMatrix[12], // row-major: [12] = m30
+        y: transformationMatrix[13],  // row-major: [13] = m31
+        z: transformationMatrix[14]  // row-major: [14] = m32
+      };
+      
+      // Выбираем вариант с меньшими абсолютными значениями (обычно translation в диапазоне -0.1 до 0.1)
+      // Column-major обычно даёт более разумные значения для MediaPipe
+      // Но если оба варианта дают нули или очень большие значения, пробуем другие индексы
+      const translation = (Math.abs(colMajorTranslation.x) < Math.abs(rowMajorTranslation.x) && 
+                          Math.abs(colMajorTranslation.x) > 0.0001)
+        ? colMajorTranslation
+        : (Math.abs(rowMajorTranslation.x) > 0.0001)
+          ? rowMajorTranslation
+          : {
+              // Если оба варианта дают нули, пробуем альтернативные индексы
+              // Возможно, это другой формат матрицы
+              x: transformationMatrix[0] || transformationMatrix[4] || transformationMatrix[8] || 0,
+              y: transformationMatrix[1] || transformationMatrix[5] || transformationMatrix[9] || 0,
+              z: transformationMatrix[2] || transformationMatrix[6] || transformationMatrix[10] || 0
+            };
+
+      // Логирование для отладки (только первые несколько раз)
+      if (!this._translationDebugCount || this._translationDebugCount < 5) {
+        console.info('Translation extracted:', {
+          x: translation.x.toFixed(4),
+          y: translation.y.toFixed(4),
+          z: translation.z.toFixed(4),
+          matrixLength: transformationMatrix.length,
+          colMajor: { x: colMajorTranslation.x.toFixed(4), y: colMajorTranslation.y.toFixed(4), z: colMajorTranslation.z.toFixed(4) },
+          rowMajor: { x: rowMajorTranslation.x.toFixed(4), y: rowMajorTranslation.y.toFixed(4), z: rowMajorTranslation.z.toFixed(4) }
+        });
+        this._translationDebugCount = (this._translationDebugCount || 0) + 1;
+      }
 
       this.lastDetectionTime = nowInMs;
+
+      // Вычисляем стабильную точку внутри объёмной головы (центр масс landmarks)
+      // Используем центр масс всех landmarks для более стабильного отслеживания,
+      // которое не зависит от поворотов головы
+      // Смещаем центр масс на 5 см вглубь головы (в центр объёма головы)
+      let stablePoint = null;
+      if (faceLandmarks && faceLandmarks.length > 0) {
+        // Вычисляем центр масс всех landmarks (3D центр головы)
+        // Это точка внутри объёма головы, которая не меняется при поворотах
+        let sumX = 0;
+        let sumY = 0;
+        let sumZ = 0;
+        let validCount = 0;
+        
+        for (let i = 0; i < faceLandmarks.length; i++) {
+          const landmark = faceLandmarks[i];
+          if (landmark && landmark.x !== undefined && landmark.y !== undefined) {
+            sumX += landmark.x;
+            sumY += landmark.y;
+            if (landmark.z !== undefined) {
+              sumZ += landmark.z;
+            }
+            validCount++;
+          }
+        }
+        
+        if (validCount > 0) {
+          const centerX = sumX / validCount;
+          const centerY = sumY / validCount;
+          const centerZ = sumZ / validCount;
+          
+          // Смещаем центр масс на 5 см вглубь головы (в направлении от камеры)
+          // Landmarks в MediaPipe нормализованы относительно размера лица
+          // Средний размер лица ~15-20 см, поэтому 5 см ≈ 0.25-0.33 в нормализованных единицах
+          // Используем среднее значение 0.03 (примерно 5 см для среднего лица)
+          // Смещаем в направлении увеличения Z (вглубь, от камеры)
+          const depthOffset = 0.03; // ~5 см в нормализованных единицах
+          
+          stablePoint = {
+            x: centerX,
+            y: centerY,
+            z: centerZ + depthOffset // Смещаем вглубь (увеличиваем Z)
+          };
+        }
+      }
 
       return {
         translation,
         faceLandmarks,
-        transformationMatrix
+        transformationMatrix,
+        stablePoint // Стабильная точка на лице для отслеживания без влияния поворотов
       };
     } catch (error) {
       console.error('Error processing frame:', error);

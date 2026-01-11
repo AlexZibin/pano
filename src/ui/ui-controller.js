@@ -13,6 +13,7 @@ export class UIController {
   constructor() {
     this.startButton = null;
     this.stopButton = null;
+    this.resetCenterButton = null;
     this.statusText = null;
     this.versionInfo = null;
     this.errorMessage = null;
@@ -24,6 +25,7 @@ export class UIController {
   initialize() {
     this.startButton = document.getElementById('startButton');
     this.stopButton = document.getElementById('stopButton');
+    this.resetCenterButton = document.getElementById('resetCenterButton');
     this.statusText = document.getElementById('status-text');
     this.versionInfo = document.getElementById('version-info');
     this.errorMessage = document.getElementById('error-message');
@@ -44,6 +46,14 @@ export class UIController {
         }
       });
     }
+
+    if (this.resetCenterButton) {
+      this.resetCenterButton.addEventListener('click', () => {
+        if (this.onResetCenterCallback) {
+          this.onResetCenterCallback();
+        }
+      });
+    }
   }
 
   /**
@@ -60,6 +70,14 @@ export class UIController {
    */
   onStop(callback) {
     this.onStopCallback = callback;
+  }
+
+  /**
+   * Устанавливает callback для кнопки "Возврат на центр"
+   * @param {Function} callback
+   */
+  onResetCenter(callback) {
+    this.onResetCenterCallback = callback;
   }
 
   /**
