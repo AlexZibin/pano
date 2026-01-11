@@ -1,0 +1,31 @@
+{
+  "name": "panotest",
+  "version": "0.1.0",
+  "description": "Веб-приложение для интерактивного управления изображением с помощью отслеживания положения головы через веб-камеру",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "mediapipe",
+    "head-tracking",
+    "webcam",
+    "canvas",
+    "interactive"
+  ],
+  "author": "Александр Зибин (Alexander Zibin)",
+  "license": "MIT",
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.9"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

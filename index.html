@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>panoTest - Управление изображением движением головы</title>
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Canvas для отображения фонового изображения -->
+    <canvas id="backgroundCanvas"></canvas>
+
+    <!-- UI элементы -->
+    <div id="ui-controls">
+      <button id="startButton" class="btn btn-primary">Старт</button>
+      <button id="stopButton" class="btn btn-secondary" disabled>Стоп</button>
+    </div>
+
+    <!-- Статус-бар внизу -->
+    <div id="status-bar">
+      <span id="status-text">Готов к запуску</span>
+      <span id="version-info">v0.1.0 - 2026-01-11 11:27:00</span>
+    </div>
+
+    <!-- Сообщения об ошибках -->
+    <div id="error-message" class="error-message hidden"></div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
