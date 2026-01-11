@@ -4,9 +4,42 @@
  * 
  * MediaPipe - это фреймворк от Google для машинного обучения на мобильных и веб-платформах.
  * Face Landmarker позволяет отслеживать ключевые точки на лице и положение головы в 3D пространстве.
+ * 
+ * MediaPipe загружается динамически из CDN через import()
  */
 
-import { FaceLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
+// URL для загрузки MediaPipe из CDN
+const MEDIAPIPE_CDN_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9';
+
+// Кэш загруженного модуля
+let mediaPipeModule = null;
+
+/**
+ * Загружает MediaPipe модуль из CDN
+ * @returns {Promise<Object>} Модуль MediaPipe с FaceLandmarker, FilesetResolver, DrawingUtils
+ */
+async function loadMediaPipe() {
+  if (!mediaPipeModule) {
+    console.info('Loading MediaPipe from CDN...');
+    try {
+      // Импортируем модуль напрямую из CDN
+      mediaPipeModule = await import(MEDIAPIPE_CDN_URL);
+      console.info('MediaPipe loaded successfully');
+    } catch (error) {
+      console.error('Failed to load MediaPipe from CDN:', error);
+      // Пробуем альтернативный CDN (unpkg)
+      console.info('Trying alternative CDN (unpkg)...');
+      try {
+        mediaPipeModule = await import('https://unpkg.com/@mediapipe/tasks-vision@0.10.9');
+        console.info('MediaPipe loaded from unpkg successfully');
+      } catch (unpkgError) {
+        console.error('Failed to load from unpkg:', unpkgError);
+        throw new Error(`Не удалось загрузить MediaPipe: ${error.message}`);
+      }
+    }
+  }
+  return mediaPipeModule;
+}
 
 /**
  * Класс для работы с MediaPipe Face Landmarker
@@ -46,11 +79,15 @@ export class MediaPipeHandler {
     try {
       console.info('Initializing MediaPipe Face Landmarker...');
 
+      // Шаг 0: Загружаем MediaPipe модуль из CDN
+      const mediaPipe = await loadMediaPipe();
+      const { FaceLandmarker, FilesetResolver, DrawingUtils } = mediaPipe;
+
       // Шаг 1: Загружаем файлы MediaPipe из CDN
       // FilesetResolver автоматически загрузит необходимые файлы (WASM, модели и т.д.)
       // из публичного CDN Google
       const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm'
       );
 
       console.info('MediaPipe files loaded, creating FaceLandmarker...');
@@ -63,6 +100,7 @@ export class MediaPipeHandler {
           delegate: 'GPU' // Используем GPU для лучшей производительности, если доступно
         },
         outputFaceBlendshapes: false, // Не нужны детали лица, только положение головы
+        outputFacialTransformationMatrixes: true, // ВАЖНО: включаем для получения transformation matrix (head pose)
         runningMode: 'VIDEO', // Режим для видео (не статичных изображений)
         numFaces: 1 // Отслеживаем только одно лицо
       });

@@ -58,3 +58,13 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}/`);
 });
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please stop the process using this port or change the port number.`);
+    console.error(`To find and stop the process, run: Get-NetTCPConnection -LocalPort ${PORT} | Select-Object -ExpandProperty OwningProcess`);
+  } else {
+    console.error('Server error:', error);
+  }
+  process.exit(1);
+});
